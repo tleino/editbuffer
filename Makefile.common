@@ -1,0 +1,53 @@
+all: ${PROGRAM}
+${LIB}: ${OBJS}
+	ranlib $@
+subdirs:
+	@for a in ${DEPS} ; do \
+		echo ${.MAKE} ${.MAKEFLAGS} -C `dirname $$a` `basename $$a`; \
+		${.MAKE} ${.MAKEFLAGS} -C `dirname $$a` `basename $$a`; \
+	done
+${PROGRAM}: subdirs ${LIB} ${PROGRAM}.o
+	${CC} -o$@ ${LIB} ${PROGRAM}.o ${LDFLAGS} ${LIBS} ${DEPS}
+.c.o:
+	${CC} ${INCLUDE} ${CFLAGS} -MMD -MP -c $<
+	ar -rcS ${LIB} $@
+${PROGRAM}.o:
+	${CC} ${INCLUDE} ${CFLAGS} -MMD -MP -c ${PROGRAM}.c
+install: ${PROGRAM}
+	@for a in ${DEPS} ; do \
+		echo ${.MAKE} ${.MAKEFLAGS} -C `dirname $$a` install ; \
+		${.MAKE} ${.MAKEFLAGS} -C `dirname $$a` install ; \
+	done
+	install ${PROGRAM} ~/bin
+clean:
+	@for a in ${DEPS} ; do \
+		echo ${.MAKE} ${.MAKEFLAGS} -C `dirname $$a` clean ; \
+		${.MAKE} ${.MAKEFLAGS} -C `dirname $$a` clean ; \
+	done
+	rm -f \
+		${OBJS} \
+		*~ \
+		${PROGRAM} \
+		${PROGRAM}.o \
+		${PROGRAM}.d \
+		${LIB} \
+		*.core \
+		${OBJS:S/.o/.d/g}
+
+dist:
+	mkdir ${PROGRAM}-${VERSION}
+	cp ${OBJS:S/.o/.c/g} ${DISTFILES} ${PROGRAM}-${VERSION}
+	tar zcvf ${PROGRAM}-${VERSION}.tar.gz ${PROGRAM}-${VERSION}
+	rm -rf ${PROGRAM}-${VERSION}
+	uuencode -m ${PROGRAM}-${VERSION}.tar.gz <${PROGRAM}-${VERSION}.tar.gz \
+		>${PROGRAM}.uu
+	if [ ! -x dist ] ; then mkdir dist ; fi
+	mv ${PROGRAM}-${VERSION}.tar.gz ${PROGRAM}.uu dist/
+pack:
+	@sh pack.sh ${PROGRAM} "${OBJS:S/.o/.c/g}" "${PACKIGNORE:S/.o/.c/g}"
+.PHONY: dist clean install pack ${LIB}
+.SUFFIXES: .c .o
+
+.for a in ${OBJS:S/.o/.d/g} ${PROGRAM}.d
+-include $a
+.endfor
